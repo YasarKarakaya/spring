@@ -3,6 +3,7 @@ pipeline {
 
     environment {
         OLLAMA_URL = 'http://ollama:11434/api/generate'
+        GITHUB_REPO = 'kullanici/repo-adı' // Örn: afkyk/ai-code-review
     }
 
     stages {
@@ -16,7 +17,6 @@ pipeline {
             steps {
                 script {
                     sh 'git fetch origin main'
-
                     def changedFiles = sh(script: 'git diff --name-only origin/main...HEAD', returnStdout: true).trim().split('\n')
                     def javaFiles = changedFiles.findAll { it.endsWith('.java') }
 
@@ -26,10 +26,7 @@ pipeline {
                         return
                     }
 
-                    def allCode = javaFiles.collect { file ->
-                        return readFile(file)
-                    }.join('\n\n')
-
+                    def allCode = javaFiles.collect { file -> readFile(file) }.join('\n\n')
                     env.CODE_TO_REVIEW = allCode.take(5000)
                 }
             }
@@ -44,10 +41,8 @@ pipeline {
                     def prompt = """
 You are a senior Java code reviewer.
 Review the following changed Java code and provide:
-
-- Bug detection
-- Code smell identification
-- Performance feedback
+- Bugs
+- Code smells
 - Suggestions
 
 ```java
@@ -67,7 +62,30 @@ ${env.CODE_TO_REVIEW}
                         requestBody: json
                     )
 
-                    echo "\n🧠 AI Review:\n${response.content}"
+                    env.AI_REVIEW = response.content
+                    echo "\n🧠 AI Review:\n${env.AI_REVIEW}"
+                }
+            }
+        }
+
+        stage('Comment on PR') {
+            when {
+                expression { return env.CHANGE_ID && env.AI_REVIEW }
+            }
+            steps {
+                withCredentials([string(credentialsId: 'GITHUB_TOKEN', variable: 'GH_TOKEN')]) {
+                    script {
+                        def reviewComment = env.AI_REVIEW.replaceAll('"', '\\"') // kaçış karakteri
+                        def apiUrl = "https://api.github.com/repos/${env.GITHUB_REPO}/issues/${env.CHANGE_ID}/comments"
+
+                        sh """
+                          curl -s -H "Authorization: token ${GH_TOKEN}" \\
+                               -H "Content-Type: application/json" \\
+                               -X POST \\
+                               -d '{ "body": "${reviewComment}" }' \\
+                               ${apiUrl}
+                        """
+                    }
                 }
             }
         }
@@ -75,7 +93,7 @@ ${env.CODE_TO_REVIEW}
 
     post {
         success {
-            echo "✅ AI review tamamlandı."
+            echo "✅ AI review tamamlandı ve PR'a yorum yazıldı."
         }
         failure {
             echo "❌ Pipeline başarısız oldu."
