@@ -3,7 +3,7 @@ pipeline {
 
     environment {
         OLLAMA_URL = 'http://ollama:11434/api/generate'
-        GITHUB_REPO = 'YasarKarakaya/spring' // 🔁 GitHub kullanıcı adı / repo adı
+        GITHUB_REPO = 'YasarKarakaya/spring' // GitHub kullanıcı adı / repo adı
     }
 
     stages {
@@ -16,7 +16,6 @@ pipeline {
         stage('Detect Changed Java Files') {
             steps {
                 script {
-                    // Default branch'i otomatik bul
                     def defaultBranch = sh(
                         script: "git remote show origin | grep 'HEAD branch' | cut -d ':' -f2 | tr -d ' '",
                         returnStdout: true
@@ -25,7 +24,6 @@ pipeline {
                     echo "🌿 Default branch: ${defaultBranch}"
 
                     sh "git fetch origin ${defaultBranch}"
-
                     def changedFiles = sh(
                         script: "git diff --name-only origin/${defaultBranch}...HEAD",
                         returnStdout: true
@@ -64,7 +62,7 @@ ${env.CODE_TO_REVIEW}
 ```"""
 
                     def json = groovy.json.JsonOutput.toJson([
-                        model: 'codegemma', // 🔁 Kullandığın Ollama modeli
+                        model: 'codegemma',
                         prompt: prompt,
                         stream: false
                     ])
@@ -76,7 +74,8 @@ ${env.CODE_TO_REVIEW}
                         requestBody: json
                     )
 
-                    env.AI_REVIEW = response.content
+                    def rawJson = new groovy.json.JsonSlurper().parseText(response.content)
+                    env.AI_REVIEW = rawJson.response
                     echo "\n🧠 AI Review:\n${env.AI_REVIEW}"
                 }
             }
@@ -89,16 +88,17 @@ ${env.CODE_TO_REVIEW}
             steps {
                 withCredentials([string(credentialsId: 'GITHUB_TOKEN', variable: 'GH_TOKEN')]) {
                     script {
+                        // AI yanıtını JSON escape formatına getir
                         def reviewComment = env.AI_REVIEW
                             .replaceAll('"', '\\"')
                             .replaceAll('\r', '')
-                            .replaceAll('\n', '\\n')
+                            .replaceAll('\n', '\\\\n') // JSON için çift kaçış
 
                         def jsonPayload = """{
                             "body": "${reviewComment}"
                         }"""
 
-                        echo "📤 Sending GitHub Comment Payload:\n${jsonPayload}"
+                        echo "📤 GitHub yorum payload:\n${jsonPayload}"
 
                         sh """
                             curl -s -H "Authorization: token ${GH_TOKEN}" \\
@@ -115,10 +115,10 @@ ${env.CODE_TO_REVIEW}
 
     post {
         success {
-            echo "✅ Pipeline başarıyla tamamlandı. PR'a yorum yazıldı."
+            echo "✅ Pipeline başarıyla tamamlandı. AI yorumu PR'a yazıldı."
         }
         failure {
-            echo "❌ Pipeline başarısız oldu. Hatalar için logu kontrol et."
+            echo "❌ Pipeline başarısız oldu. Logları kontrol et."
         }
     }
 }
