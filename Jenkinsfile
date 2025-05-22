@@ -3,7 +3,7 @@ pipeline {
 
     environment {
         OLLAMA_URL = 'http://ollama:11434/api/generate'
-        GITHUB_REPO = 'kullanici/repo-adi' // GitHub repo'n: örn afkyk/ai-code-review
+        GITHUB_REPO = 'YasarKarakaya/spring' // GitHub repo'n
     }
 
     stages {
