@@ -3,7 +3,7 @@ pipeline {
 
     environment {
         OLLAMA_URL = 'http://ollama:11434/api/generate'
-        GITHUB_REPO = 'YasarKarakaya/spring' // GitHub repo'n
+        GITHUB_REPO = 'YasarKarakaya/spring' // 🔁 GitHub kullanıcı adı / repo adı
     }
 
     stages {
@@ -16,7 +16,7 @@ pipeline {
         stage('Detect Changed Java Files') {
             steps {
                 script {
-                    // Dinamik olarak default branch'i bul
+                    // Default branch'i otomatik bul
                     def defaultBranch = sh(
                         script: "git remote show origin | grep 'HEAD branch' | cut -d ':' -f2 | tr -d ' '",
                         returnStdout: true
@@ -24,8 +24,8 @@ pipeline {
 
                     echo "🌿 Default branch: ${defaultBranch}"
 
-                    // Default branch'e göre fetch ve diff işlemleri
                     sh "git fetch origin ${defaultBranch}"
+
                     def changedFiles = sh(
                         script: "git diff --name-only origin/${defaultBranch}...HEAD",
                         returnStdout: true
@@ -34,7 +34,7 @@ pipeline {
                     def javaFiles = changedFiles.findAll { it.endsWith('.java') }
 
                     if (javaFiles.isEmpty()) {
-                        echo "🔍 Değişen Java dosyası yok, AI review yapılmayacak."
+                        echo "🔍 Değişen Java dosyası yok. AI review yapılmayacak."
                         currentBuild.result = 'SUCCESS'
                         return
                     }
@@ -53,17 +53,18 @@ pipeline {
                 script {
                     def prompt = """
 You are a senior Java code reviewer.
-Review the following changed Java code and provide:
+Review the following Java code and provide feedback:
+- Logical issues
 - Bugs
 - Code smells
-- Suggestions
+- Suggestions for improvement
 
 ```java
 ${env.CODE_TO_REVIEW}
 ```"""
 
                     def json = groovy.json.JsonOutput.toJson([
-                        model: 'codegemma',
+                        model: 'codegemma', // 🔁 Kullandığın Ollama modeli
                         prompt: prompt,
                         stream: false
                     ])
@@ -88,15 +89,23 @@ ${env.CODE_TO_REVIEW}
             steps {
                 withCredentials([string(credentialsId: 'GITHUB_TOKEN', variable: 'GH_TOKEN')]) {
                     script {
-                        def reviewComment = env.AI_REVIEW.replaceAll('"', '\\"')
-                        def apiUrl = "https://api.github.com/repos/${env.GITHUB_REPO}/issues/${env.CHANGE_ID}/comments"
+                        def reviewComment = env.AI_REVIEW
+                            .replaceAll('"', '\\"')
+                            .replaceAll('\r', '')
+                            .replaceAll('\n', '\\n')
+
+                        def jsonPayload = """{
+                            "body": "${reviewComment}"
+                        }"""
+
+                        echo "📤 Sending GitHub Comment Payload:\n${jsonPayload}"
 
                         sh """
-                          curl -s -H "Authorization: token ${GH_TOKEN}" \\
-                               -H "Content-Type: application/json" \\
-                               -X POST \\
-                               -d '{ "body": "${reviewComment}" }' \\
-                               ${apiUrl}
+                            curl -s -H "Authorization: token ${GH_TOKEN}" \\
+                                 -H "Content-Type: application/json" \\
+                                 -X POST \\
+                                 -d '${jsonPayload}' \\
+                                 https://api.github.com/repos/${env.GITHUB_REPO}/issues/${env.CHANGE_ID}/comments
                         """
                     }
                 }
@@ -106,10 +115,10 @@ ${env.CODE_TO_REVIEW}
 
     post {
         success {
-            echo "✅ AI review tamamlandı ve PR'a yorum yazıldı."
+            echo "✅ Pipeline başarıyla tamamlandı. PR'a yorum yazıldı."
         }
         failure {
-            echo "❌ Pipeline başarısız oldu."
+            echo "❌ Pipeline başarısız oldu. Hatalar için logu kontrol et."
         }
     }
 }
