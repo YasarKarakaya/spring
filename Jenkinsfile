@@ -63,7 +63,7 @@ ${env.CODE_TO_REVIEW}
 ```"""
 
                     def json = groovy.json.JsonOutput.toJson([
-                        model: 'codellama',
+                        model: 'codegemma',
                         prompt: prompt,
                         stream: false
                     ])
