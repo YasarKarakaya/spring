@@ -3,7 +3,7 @@ pipeline {
 
     environment {
         OLLAMA_URL = 'http://ollama:11434/api/generate'
-        GITHUB_REPO = 'kullanici/repo-adı' // Örn: afkyk/ai-code-review
+        GITHUB_REPO = 'kullanici/repo-adi' // GitHub repo'n: örn afkyk/ai-code-review
     }
 
     stages {
@@ -16,8 +16,21 @@ pipeline {
         stage('Detect Changed Java Files') {
             steps {
                 script {
-                    sh 'git fetch origin main'
-                    def changedFiles = sh(script: 'git diff --name-only origin/main...HEAD', returnStdout: true).trim().split('\n')
+                    // Dinamik olarak default branch'i bul
+                    def defaultBranch = sh(
+                        script: "git remote show origin | grep 'HEAD branch' | cut -d ':' -f2 | tr -d ' '",
+                        returnStdout: true
+                    ).trim()
+
+                    echo "🌿 Default branch: ${defaultBranch}"
+
+                    // Default branch'e göre fetch ve diff işlemleri
+                    sh "git fetch origin ${defaultBranch}"
+                    def changedFiles = sh(
+                        script: "git diff --name-only origin/${defaultBranch}...HEAD",
+                        returnStdout: true
+                    ).trim().split('\n')
+
                     def javaFiles = changedFiles.findAll { it.endsWith('.java') }
 
                     if (javaFiles.isEmpty()) {
@@ -75,7 +88,7 @@ ${env.CODE_TO_REVIEW}
             steps {
                 withCredentials([string(credentialsId: 'GITHUB_TOKEN', variable: 'GH_TOKEN')]) {
                     script {
-                        def reviewComment = env.AI_REVIEW.replaceAll('"', '\\"') // kaçış karakteri
+                        def reviewComment = env.AI_REVIEW.replaceAll('"', '\\"')
                         def apiUrl = "https://api.github.com/repos/${env.GITHUB_REPO}/issues/${env.CHANGE_ID}/comments"
 
                         sh """
