@@ -55,8 +55,8 @@ Review the following Java code and provide feedback:
 - Logical issues
 - Bugs
 - Code smells
-- Suggestions for improvement
-
+- Suggestions for improvement with line number.
+- Please write the missing Junit tests as well.
 ```java
 ${env.CODE_TO_REVIEW}
 ```"""
