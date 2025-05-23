@@ -50,17 +50,17 @@ pipeline {
             steps {
                 script {
                     def prompt = """
-You are a senior Java code reviewer.
-Review the following Java code and provide feedback:
-- Logical issues
-- Bugs
-- Code smells
-- Suggestions for improvement.
-- Write the line number where the necessary improvements will be made.
-- Write the missing Junit tests with Junit5.
-```java
-${env.CODE_TO_REVIEW}
-```"""
+                      You are a senior Java code reviewer.
+                      Review the following Java code and provide feedback:
+                      - Logical issues
+                      - Bugs
+                      - Code smells
+                      - Suggestions for improvement.
+                      - Write the line number where the necessary improvements will be made.
+                      - Write the missing Junit tests with Junit5.
+                      ```java
+                      ${env.CODE_TO_REVIEW}
+                      ```"""
 
                     def json = groovy.json.JsonOutput.toJson([
                         model: 'codegemma',
@@ -85,38 +85,29 @@ ${env.CODE_TO_REVIEW}
         stage('Comment on PR') {
             when {
                 expression { return env.CHANGE_ID && env.AI_REVIEW }
-            }
-            steps {
+    }
+    steps {
                 withCredentials([string(credentialsId: 'GITHUB_TOKEN', variable: 'GH_TOKEN')]) {
                     script {
-                        // escape karakterleri
-                        def reviewComment = env.AI_REVIEW
-                            .replaceAll('\\\\', '\\\\\\\\')     // \  → \\
-                            .replaceAll('"', '\\"')             // "  → \"
-                            .replaceAll('\\{', '\\\\{')         // {  → \{
-                            .replaceAll('\\}', '\\\\}')         // }  → \}
-                            .replaceAll('```', '\\`\\`\\`')     // triple backtick → escape (GitHub markdown için güvenli)
-                            .replaceAll('\r', '')               // \r → sil
-                            .replaceAll('\n', '\\\\n')          // newline → \\n
+                        // JSON escape işlemini Groovy'e bırak
+                def jsonPayload = groovy.json.JsonOutput.toJson([
+                    body: "🧠 AI Review:\n\n${env.AI_REVIEW}"
+                ])
 
-                        // JSON'u dosyaya yaz
-                        def payload = """{
-                            "body": "${reviewComment}"
-                        }"""
-                        writeFile file: 'github_payload.json', text: payload
+                writeFile file: 'github_payload.json', text: jsonPayload
 
-                        // curl komutunu secret'ı doğrudan string'e sokmadan çalıştır
-                        sh '''
-                          curl -s -H "Authorization: token $GH_TOKEN" \
-                               -H "Content-Type: application/json" \
-                               -X POST \
-                               --data @github_payload.json \
-                               https://api.github.com/repos/${GITHUB_REPO}/issues/${CHANGE_ID}/comments
-                        '''
-                    }
-                }
+                sh '''
+                  curl -s -H "Authorization: token $GH_TOKEN" \
+                       -H "Content-Type: application/json" \
+                       -X POST \
+                       --data @github_payload.json \
+                       https://api.github.com/repos/${GITHUB_REPO}/issues/${CHANGE_ID}/comments
+                '''
             }
         }
+    }
+}
+
 
     }
 
