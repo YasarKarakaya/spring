@@ -91,12 +91,13 @@ ${env.CODE_TO_REVIEW}
                     script {
                         // escape karakterleri
                         def reviewComment = env.AI_REVIEW
-                            .replaceAll('\\\\', '\\\\\\\\')
-                            .replaceAll('"', '\\"')
-                            .replaceAll('\\{', '\\\\{')
-                            .replaceAll('\\}', '\\\\}')
-                            .replaceAll('\r', '')
-                            .replaceAll('\n', '\\\\n')
+                            .replaceAll('\\\\', '\\\\\\\\')     // \  → \\
+                            .replaceAll('"', '\\"')             // "  → \"
+                            .replaceAll('\\{', '\\\\{')         // {  → \{
+                            .replaceAll('\\}', '\\\\}')         // }  → \}
+                            .replaceAll('```', '\\`\\`\\`')     // triple backtick → escape (GitHub markdown için güvenli)
+                            .replaceAll('\r', '')               // \r → sil
+                            .replaceAll('\n', '\\\\n')          // newline → \\n
 
                         // JSON'u dosyaya yaz
                         def payload = """{
