@@ -55,7 +55,8 @@ Review the following Java code and provide feedback:
 - Logical issues
 - Bugs
 - Code smells
-- Suggestions for improvement with line number.
+- Suggestions for improvement.
+- Write the line number where the necessary improvements will be made.
 - Please write the missing Junit tests as well.
 ```java
 ${env.CODE_TO_REVIEW}
@@ -90,12 +91,13 @@ ${env.CODE_TO_REVIEW}
                     script {
                         // AI yanıtını JSON escape formatına getir
                         def reviewComment = env.AI_REVIEW
-                            .replaceAll('\\\\', '\\\\\\\\')  // \ → \\
-                            .replaceAll('"', '\\"')          // " → \"
-                            .replaceAll('\\{', '\\\\{')      // { → \{
-                            .replaceAll('\\}', '\\\\}')      // } → \}
+                            .replaceAll('\\\\', '\\\\\\\\') // \ → \\
+                            .replaceAll('"', '\\"')         // " → \"
+                            .replaceAll('\\{', '\\\\{')     // { → \{
+                            .replaceAll('\\}', '\\\\}')     // } → \}
                             .replaceAll('\r', '')
-                            .replaceAll('\n', '\\\\n')       // \n → \\n
+                            .replaceAll('\n', '\\\\n')      // \n → \\n
+
 
 
                         def jsonPayload = """{
