@@ -57,7 +57,7 @@ Review the following Java code and provide feedback:
 - Code smells
 - Suggestions for improvement.
 - Write the line number where the necessary improvements will be made.
-- Write the missing Junit tests as well.
+- Write the missing Junit tests.
 ```java
 ${env.CODE_TO_REVIEW}
 ```"""
