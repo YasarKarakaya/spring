@@ -90,9 +90,13 @@ ${env.CODE_TO_REVIEW}
                     script {
                         // AI yanıtını JSON escape formatına getir
                         def reviewComment = env.AI_REVIEW
-                            .replaceAll('"', '\\"')
+                            .replaceAll('\\\\', '\\\\\\\\')  // \ → \\
+                            .replaceAll('"', '\\"')          // " → \"
+                            .replaceAll('\\{', '\\\\{')      // { → \{
+                            .replaceAll('\\}', '\\\\}')      // } → \}
                             .replaceAll('\r', '')
-                            .replaceAll('\n', '\\\\n') // JSON için çift kaçış
+                            .replaceAll('\n', '\\\\n')       // \n → \\n
+
 
                         def jsonPayload = """{
                             "body": "${reviewComment}"
