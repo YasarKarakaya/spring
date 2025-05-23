@@ -89,34 +89,34 @@ ${env.CODE_TO_REVIEW}
             steps {
                 withCredentials([string(credentialsId: 'GITHUB_TOKEN', variable: 'GH_TOKEN')]) {
                     script {
-                        // AI yanıtını JSON escape formatına getir
+                        // escape karakterleri
                         def reviewComment = env.AI_REVIEW
-                            .replaceAll('\\\\', '\\\\\\\\') // \ → \\
-                            .replaceAll('"', '\\"')         // " → \"
-                            .replaceAll('\\{', '\\\\{')     // { → \{
-                            .replaceAll('\\}', '\\\\}')     // } → \}
+                            .replaceAll('\\\\', '\\\\\\\\')
+                            .replaceAll('"', '\\"')
+                            .replaceAll('\\{', '\\\\{')
+                            .replaceAll('\\}', '\\\\}')
                             .replaceAll('\r', '')
-                            .replaceAll('\n', '\\\\n')      // \n → \\n
+                            .replaceAll('\n', '\\\\n')
 
-
-
-                        def jsonPayload = """{
+                        // JSON'u dosyaya yaz
+                        def payload = """{
                             "body": "${reviewComment}"
                         }"""
+                        writeFile file: 'github_payload.json', text: payload
 
-                        echo "📤 GitHub yorum payload:\n${jsonPayload}"
-
-                        sh """
-                            curl -s -H "Authorization: token ${GH_TOKEN}" \\
-                                 -H "Content-Type: application/json" \\
-                                 -X POST \\
-                                 -d '${jsonPayload}' \\
-                                 https://api.github.com/repos/${env.GITHUB_REPO}/issues/${env.CHANGE_ID}/comments
-                        """
+                        // curl komutunu secret'ı doğrudan string'e sokmadan çalıştır
+                        sh '''
+                          curl -s -H "Authorization: token $GH_TOKEN" \
+                               -H "Content-Type: application/json" \
+                               -X POST \
+                               --data @github_payload.json \
+                               https://api.github.com/repos/${GITHUB_REPO}/issues/${CHANGE_ID}/comments
+                        '''
                     }
                 }
             }
         }
+
     }
 
     post {
